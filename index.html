@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Morning">
+<title>Morning Dashboard</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #181c28;
+  --card2: #1e2338;
+  --border: #252a3e;
+  --text: #e8eaf2;
+  --muted: #6b7291;
+  --amber: #f5a623;
+  --amber-dim: #2a1f08;
+  --green: #3ecf8e;
+  --green-dim: #0a2018;
+  --blue: #5b8af5;
+  --purple: #8b7cf5;
+  --pink: #e85d8a;
+  --r: 14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  overflow-x: hidden;
+}
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(15,17,23,0.94);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  display: flex; border-bottom: 1px solid var(--border); padding: 0 4px;
+}
+.nav-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 3px; padding: 10px 4px 8px;
+  border: none; background: none; color: var(--muted);
+  font-size: 10px; font-family: inherit; cursor: pointer;
+  border-bottom: 2px solid transparent; transition: color 0.2s;
+}
+.nav-tab .icon { font-size: 20px; }
+.nav-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+.page { display: none; padding: 20px 16px 40px; }
+.page.active { display: block; }
+.page-header { margin-bottom: 20px; }
+.date-line { font-size: 13px; color: var(--muted); margin-bottom: 3px; }
+.greeting { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.stat { background: var(--card); border-radius: var(--r); padding: 14px; display: flex; align-items: center; gap: 12px; }
+.stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.stat-val { font-size: 18px; font-weight: 700; }
+.stat-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.prog-block { background: var(--card); border-radius: var(--r); padding: 14px; margin-bottom: 16px; }
+.prog-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.prog-label { font-size: 13px; color: var(--muted); }
+.prog-pct { font-size: 13px; font-weight: 700; }
+.prog-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.prog-fill { height: 6px; border-radius: 3px; transition: width 0.4s cubic-bezier(.4,0,.2,1); }
+.sec { margin-bottom: 20px; }
+.sec-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sec-title { font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
+.sec-right { display: flex; align-items: center; gap: 8px; }
+.sec-count { font-size: 12px; color: var(--muted); }
+.btn-add { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 12px; padding: 5px 11px; cursor: pointer; font-family: inherit; }
+.btn-add:active { color: var(--text); border-color: #3a4060; }
+.items { display: flex; flex-direction: column; gap: 8px; }
+.item { background: var(--card); border-radius: var(--r); padding: 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
+.item:active { background: var(--card2); }
+.check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.18s; }
+.check-sq { border-radius: 7px; }
+.item.done .check { background: var(--green); border-color: var(--green); }
+.item.done .check-sq { background: var(--amber); border-color: var(--amber); }
+.checkmark { display: none; font-size: 13px; font-weight: 800; color: #001f10; }
+.check-sq .checkmark { color: #1a0e00; }
+.item.done .checkmark { display: block; }
+.cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.item-body { flex: 1; min-width: 0; }
+.item-text { font-size: 15px; line-height: 1.3; }
+.item.done .item-text { text-decoration: line-through; color: var(--muted); }
+.item-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.btn-del { background: none; border: none; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; padding: 0 2px; flex-shrink: 0; }
+.add-form { background: var(--card); border-radius: var(--r); padding: 14px; margin-top: 8px; display: none; flex-direction: column; gap: 10px; }
+.add-form.open { display: flex; }
+.form-input { background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 13px; color: var(--text); font-size: 15px; font-family: inherit; outline: none; width: 100%; transition: border-color 0.2s; }
+.form-input:focus { border-color: #3a4a80; }
+.form-input::placeholder { color: var(--muted); }
+.form-select { background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 13px; color: var(--text); font-size: 14px; font-family: inherit; outline: none; flex: 1; }
+.form-row { display: flex; gap: 8px; }
+.btn-primary { background: var(--amber); border: none; border-radius: 10px; padding: 12px 16px; color: #1a0e00; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; flex: 1; }
+.btn-secondary { background: none; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; color: var(--muted); font-size: 14px; cursor: pointer; font-family: inherit; }
+.divider { height: 1px; background: var(--border); margin: 4px 0 20px; }
+.empty { color: var(--muted); font-size: 14px; text-align: center; padding: 18px 0; }
+.interval-badge { font-size: 10px; background: var(--purple); color: #fff; border-radius: 6px; padding: 2px 6px; margin-left: 4px; opacity: 0.8; }
+.review-week-card { background: var(--card); border-radius: var(--r); padding: 16px; margin-bottom: 12px; }
+.review-week-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 14px; }
+.week-days { display: flex; gap: 6px; margin-bottom: 12px; align-items: flex-end; height: 64px; }
+.week-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.week-day-lbl { font-size: 10px; color: var(--muted); }
+.week-bar-wrap { width: 100%; flex: 1; background: var(--border); border-radius: 4px; overflow: hidden; display: flex; align-items: flex-end; }
+.week-bar-fill { width: 100%; border-radius: 4px; transition: height 0.4s; }
+.week-day-pct { font-size: 10px; color: var(--muted); }
+.archive-entry { background: var(--card); border-radius: var(--r); padding: 14px; margin-bottom: 8px; }
+.archive-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.archive-date { font-size: 14px; font-weight: 600; }
+.archive-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { font-size: 12px; padding: 4px 10px; border-radius: 20px; }
+.chip-done { background: var(--green-dim); color: var(--green); }
+.chip-miss { background: #1a1020; color: var(--muted); text-decoration: line-through; }
+.note-input { background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 14px; font-family: inherit; outline: none; width: 100%; resize: none; margin-top: 10px; }
+.note-input:focus { border-color: #3a4a80; }
+.settings-title { font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.settings-item { background: var(--card); border-radius: var(--r); padding: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.settings-item:active { background: var(--card2); }
+.s-icon { font-size: 20px; width: 32px; text-align: center; flex-shrink: 0; }
+.s-body { flex: 1; }
+.s-title { font-size: 15px; }
+.s-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.import-area { background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; color: var(--text); font-size: 13px; font-family: inherit; outline: none; width: 100%; height: 90px; resize: none; margin-top: 8px; }
+.backup-item { background: var(--card2); border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+.backup-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.btn-restore { background: none; border: 1px solid var(--green); border-radius: 8px; color: var(--green); font-size: 12px; padding: 5px 10px; cursor: pointer; flex-shrink: 0; }
+.toast { position: fixed; bottom: calc(env(safe-area-inset-bottom,0px) + 80px); left: 50%; transform: translateX(-50%); background: var(--green); color: #001f10; font-size: 13px; font-weight: 700; padding: 10px 20px; border-radius: 20px; opacity: 0; transition: opacity 0.25s; pointer-events: none; white-space: nowrap; z-index: 999; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="nav-tab active" onclick="showPage('home')" id="tab-home"><span class="icon">☀️</span><span>Heute</span></button>
+  <button class="nav-tab" onclick="showPage('cart')" id="tab-cart"><span class="icon">🛒</span><span>Einkauf</span></button>
+  <button class="nav-tab" onclick="showPage('review')" id="tab-review"><span class="icon">📊</span><span>Review</span></button>
+  <button class="nav-tab" onclick="showPage('settings')" id="tab-settings"><span class="icon">⚙️</span><span>Mehr</span></button>
+</nav>
+
+<!-- HEUTE -->
+<div class="page active" id="page-home">
+  <div class="page-header">
+    <div class="date-line" id="date-str"></div>
+    <div class="greeting" id="greeting"></div>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-icon" style="background:var(--amber-dim)">🔥</div>
+      <div><div class="stat-val" style="color:var(--amber)" id="streak-val">0</div><div class="stat-lbl">Tage Streak</div></div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon" style="background:var(--green-dim)">✅</div>
+      <div><div class="stat-val" style="color:var(--green)" id="routine-pct-stat">0%</div><div class="stat-lbl">Routinen heute</div></div>
+    </div>
+  </div>
+  <div class="prog-block">
+    <div class="prog-row"><span class="prog-label">🔄 Routinen heute</span><span class="prog-pct" style="color:var(--amber)" id="r-pct-lbl">0%</span></div>
+    <div class="prog-track"><div class="prog-fill" id="r-prog" style="width:0%;background:var(--amber)"></div></div>
+  </div>
+  <div class="sec">
+    <div class="sec-header">
+      <span class="sec-title">🔄 Routinen</span>
+      <div class="sec-right"><span class="sec-count" id="r-count"></span><button class="btn-add" onclick="toggleForm('r-form')">+ Neu</button></div>
+    </div>
+    <div class="items" id="routine-list"></div>
+    <div class="add-form" id="r-form">
+      <input class="form-input" id="r-inp" placeholder="z.B. Meditation, Sport, Journaling…" onkeydown="if(event.key==='Enter')addRoutine()">
+      <div class="form-row">
+        <button class="btn-secondary" onclick="toggleForm('r-form')">Abbrechen</button>
+        <button class="btn-primary" onclick="addRoutine()">Speichern</button>
+      </div>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="sec">
+    <div class="sec-header">
+      <span class="sec-title">📋 Aufgaben</span>
+      <div class="sec-right"><span class="sec-count" id="t-count"></span><button class="btn-add" onclick="toggleForm('t-form')">+ Neu</button></div>
+    </div>
+    <div class="items" id="todo-list"></div>
+    <div class="add-form" id="t-form">
+      <input class="form-input" id="t-inp" placeholder="Aufgabe für heute…" onkeydown="if(event.key==='Enter')addTodo()">
+      <div class="form-row">
+        <select class="form-select" id="t-cat">
+          <option value="Arbeit">💼 Arbeit</option>
+          <option value="Privat">⭐ Privat</option>
+          <option value="Sonstiges">📌 Sonstiges</option>
+        </select>
+        <button class="btn-secondary" onclick="toggleForm('t-form')" style="flex:0;padding:12px">✕</button>
+        <button class="btn-primary" onclick="addTodo()" style="flex:0;padding:12px 18px">OK</button>
+      </div>
+    </div>
+  </div>
+  <div class="sec" id="interval-due-sec" style="display:none">
+    <div class="sec-header">
+      <span class="sec-title">🔁 Fällig heute</span>
+      <span class="sec-count" id="interval-due-count"></span>
+    </div>
+    <div class="items" id="interval-due-list"></div>
+  </div>
+</div>
+
+<!-- EINKAUF -->
+<div class="page" id="page-cart">
+  <div class="page-header"><div class="date-line">Langzeit</div><div class="greeting">Einkauf & Intervalle</div></div>
+  <div class="sec">
+    <div class="sec-header">
+      <span class="sec-title">🛒 Einkaufsliste</span>
+      <button class="btn-add" onclick="toggleForm('c-form')">+ Neu</button>
+    </div>
+    <div class="items" id="cart-list"></div>
+    <div class="add-form" id="c-form">
+      <input class="form-input" id="c-inp" placeholder="z.B. Winterjacke, Kopfhörer…" onkeydown="if(event.key==='Enter')addCartItem()">
+      <input class="form-input" id="c-note" placeholder="Notiz (optional)">
+      <div class="form-row">
+        <button class="btn-secondary" onclick="toggleForm('c-form')">Abbrechen</button>
+        <button class="btn-primary" onclick="addCartItem()">Speichern</button>
+      </div>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="sec">
+    <div class="sec-header">
+      <span class="sec-title">🔁 Intervall-Aufgaben</span>
+      <button class="btn-add" onclick="toggleForm('i-form')">+ Neu</button>
+    </div>
+    <div class="items" id="interval-list"></div>
+    <div class="add-form" id="i-form">
+      <input class="form-input" id="i-inp" placeholder="z.B. Ölstand prüfen, Wohnung putzen…">
+      <select class="form-select" id="i-interval" style="width:100%">
+        <option value="7">Wöchentlich</option>
+        <option value="14">Alle 2 Wochen</option>
+        <option value="30">Monatlich</option>
+      </select>
+      <div class="form-row">
+        <button class="btn-secondary" onclick="toggleForm('i-form')">Abbrechen</button>
+        <button class="btn-primary" onclick="addInterval()">Speichern</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REVIEW -->
+<div class="page" id="page-review">
+  <div class="page-header"><div class="date-line">Rückblick</div><div class="greeting">Review</div></div>
+  <div class="review-week-card">
+    <div class="review-week-title">Diese Woche – Routinen</div>
+    <div class="week-days" id="week-bars"></div>
+    <div style="background:var(--card2);border-radius:10px;padding:10px">
+      <div class="prog-row"><span class="prog-label">Woche gesamt</span><span class="prog-pct" style="color:var(--amber)" id="week-pct">0%</span></div>
+      <div class="prog-track"><div class="prog-fill" id="week-prog" style="width:0%;background:var(--amber)"></div></div>
+    </div>
+  </div>
+  <div class="prog-block">
+    <div class="prog-row"><span class="prog-label">📅 Monat gesamt – Routinen</span><span class="prog-pct" style="color:var(--blue)" id="month-pct">0%</span></div>
+    <div class="prog-track"><div class="prog-fill" id="month-prog" style="width:0%;background:var(--blue)"></div></div>
+  </div>
+  <div class="divider"></div>
+  <div class="sec-header" style="margin-bottom:12px">
+    <span class="sec-title">📁 Tagesarchiv</span>
+    <button class="btn-add" onclick="archiveToday()">Heute speichern</button>
+  </div>
+  <div id="archive-list"></div>
+</div>
+
+<!-- MEHR -->
+<div class="page" id="page-settings">
+  <div class="page-header"><div class="date-line">Optionen</div><div class="greeting">Mehr</div></div>
+  <div class="settings-title">Daten</div>
+  <div class="settings-item" onclick="exportData()">
+    <div class="s-icon">📤</div>
+    <div class="s-body"><div class="s-title">Exportieren</div><div class="s-sub">Alle Daten kopieren – für Handywechsel</div></div>
+    <span style="color:var(--muted)">›</span>
+  </div>
+  <div class="settings-item" onclick="toggleEl('import-wrap')">
+    <div class="s-icon">📥</div>
+    <div class="s-body"><div class="s-title">Importieren</div><div class="s-sub">Exportierten Code einfügen</div></div>
+    <span style="color:var(--muted)">›</span>
+  </div>
+  <div id="import-wrap" style="display:none;margin-bottom:12px">
+    <textarea class="import-area" id="import-txt" placeholder="Exportierten Text hier einfügen…"></textarea>
+    <div class="form-row" style="margin-top:8px">
+      <button class="btn-secondary" onclick="toggleEl('import-wrap')">Abbrechen</button>
+      <button class="btn-primary" onclick="importData()">Importieren</button>
+    </div>
+  </div>
+  <div style="margin-top:20px" class="settings-title">Automatische Backups</div>
+  <div id="backup-list-ui"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STORAGE (localStorage) ──────────────────────────────
+const LS = {
+  get: (k) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):null; } catch{ return null; } },
+  set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch{} }
+};
+
+// ── STATE ───────────────────────────────────────────────
+const CAT_COLOR = { Arbeit:'#5b8af5', Privat:'#3ecf8e', Sonstiges:'#8b7cf5' };
+const DAY_SHORT  = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+
+let routines  = [];
+let todos     = [];
+let cartItems = [];
+let intervals = [];
+let archive   = [];
+let streak    = 0;
+
+// ── UTILS ───────────────────────────────────────────────
+function todayKey(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(s){ return new Date(s+'T12:00:00').toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'}); }
+function fmtShort(s){ return new Date(s+'T12:00:00').toLocaleDateString('de-DE',{day:'numeric',month:'short'}); }
+function greetTxt(){ const h=new Date().getHours(); return h<12?'Guten Morgen 👋':h<17?'Guten Nachmittag 👋':'Guten Abend 👋'; }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+function toggleEl(id){ const el=document.getElementById(id); el.style.display=el.style.display==='none'?'block':'none'; }
+function toggleForm(id){ const f=document.getElementById(id); const open=f.classList.toggle('open'); if(open){ const inp=f.querySelector('.form-input'); if(inp) setTimeout(()=>inp.focus(),50); } }
+
+// ── INIT ────────────────────────────────────────────────
+function init(){
+  routines  = LS.get('md_routines')  || [];
+  todos     = LS.get('md_todos')     || [];
+  cartItems = LS.get('md_cart')      || [];
+  intervals = LS.get('md_intervals') || [];
+  archive   = LS.get('md_archive')   || [];
+  streak    = LS.get('md_streak')    || 0;
+
+  const lastDate    = LS.get('md_lastDate')    || '';
+  const routineDate = LS.get('md_routineDate') || '';
+  const today = todayKey();
+  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+
+  // Streak
+  if(lastDate !== today){
+    streak = lastDate===yesterday ? streak+1 : 1;
+    LS.set('md_streak', streak);
+    LS.set('md_lastDate', today);
+  }
+
+  // Routinen-Häkchen reset bei neuem Tag
+  if(routineDate !== today){
+    routines = routines.map(r=>({...r, done:false}));
+    LS.set('md_routines', routines);
+    LS.set('md_routineDate', today);
+  }
+
+  // Erledigte Todos vom Vortag entfernen
+  if(lastDate && lastDate !== today){
+    todos = todos.filter(t=>!t.done);
+    LS.set('md_todos', todos);
+  }
+
+  makeBackup('Beim Öffnen');
+  renderAll();
+}
+
+// ── BACKUP ──────────────────────────────────────────────
+function makeBackup(trigger){
+  let bk = LS.get('md_backups') || [];
+  bk.unshift({ ts:Date.now(), trigger, routines:[...routines], todos:[...todos], cartItems:[...cartItems], intervals:[...intervals], streak });
+  if(bk.length>5) bk=bk.slice(0,5);
+  LS.set('md_backups', bk);
+}
+
+// ── NAVIGATION ──────────────────────────────────────────
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='review') renderReview();
+  if(name==='settings') renderBackups();
+}
+
+// ── ROUTINEN ────────────────────────────────────────────
+function addRoutine(){
+  const text=document.getElementById('r-inp').value.trim(); if(!text) return;
+  routines.push({id:Date.now(), text, done:false});
+  document.getElementById('r-inp').value='';
+  toggleForm('r-form');
+  LS.set('md_routines', routines); renderHome();
+}
+function toggleRoutine(id){ const r=routines.find(x=>x.id===id); if(r){r.done=!r.done; LS.set('md_routines',routines); renderHome();} }
+function delRoutine(id,e){ e.stopPropagation(); routines=routines.filter(x=>x.id!==id); LS.set('md_routines',routines); renderHome(); }
+
+// ── TODOS ────────────────────────────────────────────────
+function addTodo(){
+  const text=document.getElementById('t-inp').value.trim(); if(!text) return;
+  todos.push({id:Date.now(), text, cat:document.getElementById('t-cat').value, done:false});
+  document.getElementById('t-inp').value='';
+  toggleForm('t-form');
+  LS.set('md_todos', todos); renderHome();
+}
+function toggleTodo(id){ const t=todos.find(x=>x.id===id); if(t){t.done=!t.done; LS.set('md_todos',todos); renderHome();} }
+function delTodo(id,e){ e.stopPropagation(); todos=todos.filter(x=>x.id!==id); LS.set('md_todos',todos); renderHome(); }
+
+// ── CART ─────────────────────────────────────────────────
+function addCartItem(){
+  const text=document.getElementById('c-inp').value.trim(); if(!text) return;
+  cartItems.push({id:Date.now(), text, note:document.getElementById('c-note').value.trim(), done:false});
+  document.getElementById('c-inp').value=''; document.getElementById('c-note').value='';
+  toggleForm('c-form');
+  LS.set('md_cart', cartItems); renderCart();
+}
+function toggleCart(id){ const c=cartItems.find(x=>x.id===id); if(c){c.done=!c.done; LS.set('md_cart',cartItems); renderCart();} }
+function delCart(id,e){ e.stopPropagation(); cartItems=cartItems.filter(x=>x.id!==id); LS.set('md_cart',cartItems); renderCart(); }
+
+// ── INTERVALS ────────────────────────────────────────────
+function addInterval(){
+  const text=document.getElementById('i-inp').value.trim(); if(!text) return;
+  const days=parseInt(document.getElementById('i-interval').value);
+  const due=new Date(); due.setDate(due.getDate()+days);
+  intervals.push({id:Date.now(), text, intervalDays:days, nextDue:due.toISOString().slice(0,10)});
+  document.getElementById('i-inp').value='';
+  toggleForm('i-form');
+  LS.set('md_intervals', intervals); renderCart(); renderHome();
+}
+function doneInterval(id){
+  const iv=intervals.find(x=>x.id===id); if(!iv) return;
+  const d=new Date(); d.setDate(d.getDate()+iv.intervalDays);
+  iv.nextDue=d.toISOString().slice(0,10);
+  LS.set('md_intervals', intervals); renderHome(); renderCart();
+  toast('✓ Erledigt – nächste Fälligkeit gesetzt');
+}
+function delInterval(id,e){ e.stopPropagation(); intervals=intervals.filter(x=>x.id!==id); LS.set('md_intervals',intervals); renderCart(); renderHome(); }
+function isDue(iv){ return iv.nextDue<=todayKey(); }
+function intervalLbl(d){ return d===7?'Wöchentlich':d===14?'2-wöchentlich':'Monatlich'; }
+
+// ── ARCHIVE ──────────────────────────────────────────────
+function archiveToday(){
+  const today=todayKey();
+  const idx=archive.findIndex(a=>a.date===today);
+  const existing=idx>=0?archive[idx]:{};
+  const entry={
+    date:today,
+    routinesDone:routines.filter(r=>r.done).length,
+    routinesTotal:routines.length,
+    todosDone:todos.filter(t=>t.done).length,
+    todosTotal:todos.length,
+    note:existing.note||'',
+    routineDetails:routines.map(r=>({text:r.text,done:r.done}))
+  };
+  if(idx>=0) archive[idx]=entry; else archive.unshift(entry);
+  LS.set('md_archive', archive);
+  renderReview();
+  toast('✓ Tag gespeichert');
+}
+function saveNote(date,note){
+  const e=archive.find(a=>a.date===date); if(e){ e.note=note; LS.set('md_archive',archive); }
+}
+
+// ── EXPORT / IMPORT ──────────────────────────────────────
+function exportData(){
+  const payload={routines,todos,cartItems,intervals,archive,streak,v:5};
+  const str=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  try { navigator.clipboard.writeText(str).then(()=>toast('✓ In Zwischenablage kopiert!')); }
+  catch { prompt('Diesen Text kopieren:',str); }
+}
+function importData(){
+  const raw=document.getElementById('import-txt').value.trim(); if(!raw){toast('Kein Text');return;}
+  try {
+    const p=JSON.parse(decodeURIComponent(escape(atob(raw))));
+    routines=p.routines||[]; todos=p.todos||[]; cartItems=p.cartItems||[];
+    intervals=p.intervals||[]; archive=p.archive||[]; streak=p.streak||0;
+    LS.set('md_routines',routines); LS.set('md_todos',todos); LS.set('md_cart',cartItems);
+    LS.set('md_intervals',intervals); LS.set('md_archive',archive); LS.set('md_streak',streak);
+    renderAll(); toggleEl('import-wrap'); toast('✓ Importiert!');
+  } catch{ toast('Ungültiger Code'); }
+}
+
+// ── RENDER ────────────────────────────────────────────────
+function renderAll(){ renderHome(); renderCart(); }
+
+function renderHome(){
+  const rDone=routines.filter(r=>r.done).length;
+  const rPct=routines.length?Math.round(rDone/routines.length*100):0;
+  const tDone=todos.filter(t=>t.done).length;
+
+  document.getElementById('streak-val').textContent=streak;
+  document.getElementById('routine-pct-stat').textContent=rPct+'%';
+  document.getElementById('r-pct-lbl').textContent=rPct+'%';
+  document.getElementById('r-prog').style.width=rPct+'%';
+  document.getElementById('r-count').textContent=rDone+'/'+routines.length;
+  document.getElementById('t-count').textContent=tDone+'/'+todos.length;
+
+  document.getElementById('routine-list').innerHTML = routines.length
+    ? routines.map(r=>`
+      <div class="item${r.done?' done':''}" onclick="toggleRoutine(${r.id})">
+        <div class="check check-sq"><span class="checkmark">✓</span></div>
+        <div class="item-body"><div class="item-text">${esc(r.text)}</div></div>
+        <button class="btn-del" onclick="delRoutine(${r.id},event)">×</button>
+      </div>`).join('')
+    : '<div class="empty">Noch keine Routinen – füge deine erste hinzu ↑</div>';
+
+  document.getElementById('todo-list').innerHTML = todos.length
+    ? todos.map(t=>`
+      <div class="item${t.done?' done':''}" onclick="toggleTodo(${t.id})">
+        <div class="check"><span class="checkmark">✓</span></div>
+        <div class="cat-dot" style="background:${CAT_COLOR[t.cat]||'#6b7291'}"></div>
+        <div class="item-body"><div class="item-text">${esc(t.text)}</div></div>
+        <button class="btn-del" onclick="delTodo(${t.id},event)">×</button>
+      </div>`).join('')
+    : '<div class="empty">Keine Aufgaben – füge eine hinzu ↑</div>';
+
+  const due=intervals.filter(isDue);
+  const dsec=document.getElementById('interval-due-sec');
+  if(due.length){
+    dsec.style.display='block';
+    document.getElementById('interval-due-count').textContent=due.length+' fällig';
+    document.getElementById('interval-due-list').innerHTML=due.map(iv=>`
+      <div class="item" style="border:1px solid var(--purple)">
+        <div class="item-body">
+          <div class="item-text">${esc(iv.text)}<span class="interval-badge">${intervalLbl(iv.intervalDays)}</span></div>
+          <div class="item-sub">Fällig seit ${fmtShort(iv.nextDue)}</div>
+        </div>
+        <button class="btn-add" onclick="doneInterval(${iv.id})" style="color:var(--green);border-color:var(--green);white-space:nowrap">Erledigt</button>
+      </div>`).join('');
+  } else { dsec.style.display='none'; }
+}
+
+function renderCart(){
+  document.getElementById('cart-list').innerHTML = cartItems.length
+    ? [...cartItems].sort((a,b)=>a.done-b.done).map(c=>`
+      <div class="item${c.done?' done':''}" onclick="toggleCart(${c.id})">
+        <div class="check"><span class="checkmark">✓</span></div>
+        <div class="item-body">
+          <div class="item-text">${esc(c.text)}</div>
+          ${c.note?`<div class="item-sub">${esc(c.note)}</div>`:''}
+        </div>
+        <button class="btn-del" onclick="delCart(${c.id},event)">×</button>
+      </div>`).join('')
+    : '<div class="empty">Noch nichts auf der Liste</div>';
+
+  document.getElementById('interval-list').innerHTML = intervals.length
+    ? intervals.map(iv=>`
+      <div class="item" style="${isDue(iv)?'border:1px solid var(--purple)':''}">
+        <div class="item-body">
+          <div class="item-text">${esc(iv.text)}<span class="interval-badge">${intervalLbl(iv.intervalDays)}</span></div>
+          <div class="item-sub">${isDue(iv)?'⚠️ Fällig jetzt':'Nächste Fälligkeit: '+fmtShort(iv.nextDue)}</div>
+        </div>
+        <button class="btn-del" onclick="delInterval(${iv.id},event)">×</button>
+      </div>`).join('')
+    : '<div class="empty">Noch keine Intervall-Aufgaben</div>';
+}
+
+function renderReview(){
+  const today=new Date();
+  const weekData=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(today); d.setDate(today.getDate()-i);
+    const key=d.toISOString().slice(0,10);
+    const e=archive.find(a=>a.date===key);
+    weekData.push({label:DAY_SHORT[d.getDay()], pct:e&&e.routinesTotal?Math.round(e.routinesDone/e.routinesTotal*100):0, isToday:i===0});
+  }
+  const weekAvg=Math.round(weekData.reduce((s,d)=>s+d.pct,0)/7);
+  document.getElementById('week-pct').textContent=weekAvg+'%';
+  document.getElementById('week-prog').style.width=weekAvg+'%';
+  document.getElementById('week-bars').innerHTML=weekData.map(d=>{
+    const col=d.pct>=80?'var(--green)':d.pct>=50?'var(--amber)':'var(--pink)';
+    return `<div class="week-day">
+      <div class="week-day-lbl" style="${d.isToday?'color:var(--amber);font-weight:700':''}">${d.label}</div>
+      <div class="week-bar-wrap"><div class="week-bar-fill" style="height:${Math.max(d.pct,2)}%;background:${col}"></div></div>
+      <div class="week-day-pct">${d.pct}%</div>
+    </div>`;
+  }).join('');
+
+  const monthKey=todayKey().slice(0,7);
+  const me=archive.filter(a=>a.date.startsWith(monthKey)&&a.routinesTotal>0);
+  const mAvg=me.length?Math.round(me.reduce((s,e)=>s+Math.round(e.routinesDone/e.routinesTotal*100),0)/me.length):0;
+  document.getElementById('month-pct').textContent=mAvg+'%';
+  document.getElementById('month-prog').style.width=mAvg+'%';
+
+  const al=document.getElementById('archive-list');
+  if(!archive.length){ al.innerHTML='<div class="empty">Noch kein Tag gespeichert – tippe oben auf "Heute speichern"</div>'; return; }
+  al.innerHTML=archive.map(e=>{
+    const pct=e.routinesTotal?Math.round(e.routinesDone/e.routinesTotal*100):0;
+    const col=pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--pink)';
+    return `<div class="archive-entry">
+      <div class="archive-header">
+        <div class="archive-date">${fmtShort(e.date)}</div>
+        <div style="font-size:13px;font-weight:700;color:${col}">${pct}% Routinen</div>
+      </div>
+      <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div class="archive-chips">
+        ${(e.routineDetails||[]).map(r=>`<span class="chip ${r.done?'chip-done':'chip-miss'}">${esc(r.text)}</span>`).join('')}
+      </div>
+      ${e.todosTotal?`<div style="font-size:12px;color:var(--muted);margin-top:8px">📋 ${e.todosDone}/${e.todosTotal} Aufgaben</div>`:''}
+      <textarea class="note-input" rows="2" placeholder="Notiz zum Tag…" onchange="saveNote('${e.date}',this.value)">${esc(e.note||'')}</textarea>
+    </div>`;
+  }).join('');
+}
+
+function renderBackups(){
+  const bk=LS.get('md_backups')||[];
+  const el=document.getElementById('backup-list-ui');
+  if(!bk.length){ el.innerHTML='<div class="empty">Noch keine Backups</div>'; return; }
+  el.innerHTML=bk.map((b,i)=>{
+    const d=new Date(b.ts);
+    const ts=d.toLocaleDateString('de-DE',{day:'numeric',month:'short'})+' · '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="backup-item">
+      <div style="flex:1">
+        <div style="font-size:13px">${ts} <span style="font-size:11px;color:var(--muted)">(${b.trigger})</span></div>
+        <div class="backup-meta">${b.routines.length} Routinen · ${b.todos.length} Aufgaben</div>
+      </div>
+      <button class="btn-restore" onclick="restoreBackup(${i})">↩ Restore</button>
+    </div>`;
+  }).join('');
+}
+
+function restoreBackup(i){
+  const bk=LS.get('md_backups')||[]; const b=bk[i]; if(!b) return;
+  routines=b.routines; todos=b.todos; cartItems=b.cartItems||[]; intervals=b.intervals||[]; streak=b.streak||0;
+  LS.set('md_routines',routines); LS.set('md_todos',todos); LS.set('md_cart',cartItems);
+  LS.set('md_intervals',intervals); LS.set('md_streak',streak);
+  renderAll(); toast('✓ Wiederhergestellt');
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+// ── START ─────────────────────────────────────────────────
+document.getElementById('date-str').textContent = fmtDate(todayKey());
+document.getElementById('greeting').textContent = greetTxt();
+window.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') makeBackup('Beim Verlassen'); });
+init();
+</script>
+</body>
+</html>
